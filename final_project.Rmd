@@ -1,0 +1,118 @@
+---
+title: "6510Time_Project"
+author: "Xuanhao,Cao"
+date: "2023-12-03"
+output: word_document
+---
+
+```{r }
+library(readr)
+Etth <- read_csv("/Users/xuanhaocao/Desktop/patchTST/all_six_datasets/ETT-small/ETTh1.csv")
+
+library(fpp3)
+
+Etth_tsibble <- Etth %>%
+  as_tsibble(index = date)
+
+library(tsibble)
+
+# Assuming Etth_tsibble is your tsibble dataset
+# Calculate the index to split the dataset (80% for training)
+split_index <- floor(nrow(Etth_tsibble) * 0.95)
+
+# Splitting the tsibble into training and testing sets
+# The training set contains the first 80% of the rows
+train_tsibble <- Etth_tsibble %>% slice(1:split_index)
+
+# The testing set contains the remaining 20% of the rows
+test_tsibble <- Etth_tsibble %>% slice((split_index + 1):n())
+
+```
+
+
+
+```{r}
+ nnar_fit <- train_tsibble |> model(NNETAR(OT))
+nnar_fit
+```
+
+
+The <NNAR(25,1,13)[24]> notation for the NNETAR model indicates it's a neural network autoregressive model with 25 past values as inputs, one hidden layer containing 13 neurons, and it's configured to capture a seasonal pattern with a period of 24 units, such as daily seasonality in hourly data.
+
+
+
+```{r}
+report(nnar_fit)
+```
+
+
+```{r}
+
+
+nnar_fit |> gg_tsresiduals()
+
+
+accuracy(nnar_fit)
+
+```
+
+
+
+```{r }
+#nnar_forecast <- nnar_fit |> forecast(new_data = test_tsibble)
+nnar_forecast <- forecast(nnar_fit, h = 871)
+
+
+```
+
+
+
+
+
+
+
+```{r}
+nnar_forecast |> autoplot(test_tsibble)
+```
+
+
+```{r}
+ nnar_accuracy <- fabletools::accuracy(nnar_forecast, test_tsibble)
+ nnar_accuracy
+```
+
+
+
+```{r}
+fit_SARIMA <- train_tsibble %>% model(
+ARIMA(OT ~ HUFL + HULL + MUFL + MULL + LUFL + LULL)
+)
+
+```
+
+```{r}
+
+report(fit_SARIMA)
+
+```
+
+
+
+```{r}
+fit_SARIMA |> gg_tsresiduals()
+```
+
+
+```{r}
+fit_SARIMA_forecast <- fit_SARIMA |> forecast(new_data = test_tsibble)
+```
+
+```{r}
+fit_SARIMA_forecast |> autoplot(test_tsibble)
+```
+
+
+```{r}
+ SARIMA <- fabletools::accuracy(fit_SARIMA_forecast, test_tsibble)
+ SARIMA
+```
